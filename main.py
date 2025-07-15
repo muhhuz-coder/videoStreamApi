@@ -47,3 +47,29 @@ async def get_video(video_name:str):
 async def watch_video(request:Request,video_name:str):
     title= video_name.rsplit('.',1)[0].replace('_',' ')
     return templates.TemplateResponse("watch.html",{'request':request,"video_name":video_name,'title':title})    
+
+
+@app.get("/upload",response_class=HTMLResponse)
+async def upload_form(request: Request):
+     return templates.TemplateResponse("upload.html",{"request":request})    
+    
+@app.post('/upload')
+async def upload_video(request:Request,title:str=File(...),video_file: UploadFile= File(...)):
+    contents = await video_file.read()
+    file_extension = video_file.filename.split('.')[-1]
+    file_name = f"{title.replace(' ','_')}.{file_extension}"
+
+    existing_files = supabse.storage.from_(SUPABASE_BUCKET).list()
+    existing_names = [f["name"] for f in existing_files]
+
+    if file_name in existing_names:
+        message="File already exists. Please rename or delete it first."
+    else:
+      try:
+        res = supabse.storage.from_(SUPABASE_BUCKET).upload(file_name, contents)
+        message="File uploaded successfully"
+    
+      except Exception as e:
+        message="File uploaded failed"
+        
+    return templates.TemplateResponse("upload.html",{'request':request,'message': message})         
